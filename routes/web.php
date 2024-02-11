@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RedirectController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,3 +17,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Route::group(['prefix' => 'r'], function () {
+//     Route::get('/{:id}', [RedirectController::class, 'index']);
+// });
+
+Route::get('/r/{code}', [RedirectController::class, 'index']);

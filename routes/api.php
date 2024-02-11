@@ -22,4 +22,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::group(['prefix' => 'redirects'], function () {
     Route::post('/', [RedirectController::class, 'store']);
+    Route::put('/{code}', [RedirectController::class, 'update']);
+    Route::delete('/{code}', [RedirectController::class, 'destroy']);
 });

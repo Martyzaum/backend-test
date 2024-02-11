@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('redirects', function (Blueprint $table) {
             $table->id()->index();
-            $table->string('code')->unique()->index()->nullable();
+            $table->string('code')->unique()->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->string('destiny_url');
             $table->timestamp('last_access')->nullable();
