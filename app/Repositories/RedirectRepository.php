@@ -3,20 +3,24 @@
 namespace App\Repositories;
 
 use App\Models\Redirect;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Vinkla\Hashids\Facades\Hashids;
 
 class RedirectRepository
 {
-    protected $redirectModel;
-
-    public function __construct(Redirect $redirectModel)
+    public function __construct(private Redirect $redirectModel)
     {
-        $this->redirectModel = $redirectModel;
     }
 
-    public function saveRedirect(string $destinyUrl): array | Redirect
+    /**
+     * Save a redirect
+     * @param string $destinyUrl
+     * @return array | Redirect
+     */
+    public function save(string $destinyUrl): array | Redirect
     {
         try {
             DB::beginTransaction();
@@ -43,7 +47,12 @@ class RedirectRepository
         }
     }
 
-    public function getRedirect(string $code): array | Redirect
+    /**
+     * Get a redirect
+     * @param string $code
+     * @return array | Redirect
+     */
+    public function get(string $code): array | Redirect
     {
         try {
             $id = Hashids::decode($code);
@@ -56,7 +65,10 @@ class RedirectRepository
                 ];
             }
 
-            $redirect = Redirect::find($id[0]);
+            $redirect = Cache::remember('redirect_' . $id[0], 60, function () use ($id) {
+                return Redirect::find($id[0]);
+            });
+
             if (empty($redirect)) {
                 Log::error('[RedirectRepository - getRedirect] Redirect not found!', ['code' => $code]);
 
@@ -80,7 +92,13 @@ class RedirectRepository
         }
     }
 
-    public function updateRedirect(string $code, array $data): array | Redirect
+    /**
+     * Update a redirect
+     * @param string $code
+     * @param array $data
+     * @return array | Redirect
+     */
+    public function update(string $code, array $data): array | Redirect
     {
         try {
             $id = Hashids::decode($code);
@@ -97,6 +115,8 @@ class RedirectRepository
 
             $redirect->update($data);
 
+            Cache::forget('redirect_' . $id[0]);
+
             Log::info('[RedirectRepository - updateRedirect] Redirect updated successfully!', ['data' => $redirect]);
 
             return $redirect;
@@ -111,7 +131,12 @@ class RedirectRepository
         }
     }
 
-    public function deleteRedirect(string $code): array
+    /**
+     * Delete a redirect
+     * @param string $code
+     * @return array
+     */
+    public function delete(string $code): array
     {
         try {
             $id = Hashids::decode($code);
@@ -127,6 +152,8 @@ class RedirectRepository
             }
 
             $redirect->delete();
+
+            Cache::forget('redirect_' . $id[0]);
 
             Log::info('[RedirectRepository - deleteRedirect] Redirect deleted successfully!', ['data' => $redirect]);
 
@@ -144,4 +171,28 @@ class RedirectRepository
             ];
         }
     }
+
+    /**
+     * Get all redirects
+     * @return array | Collection
+     */
+    public function getAll(): array | Collection
+    {
+        try {
+            $redirects = Redirect::all();
+
+            Log::info('[RedirectRepository - getAllRedirects] Redirects found successfully!', ['data' => $redirects]);
+
+            return $redirects;
+        } catch (\Throwable $th) {
+            Log::error('[RedirectRepository - getAllRedirects] An error occurred while trying to get the redirects', ['error' => $th->getMessage()]);
+
+            return [
+                'status' => 'error',
+                'message' => 'An error occurred while trying to get the redirects',
+                'error' => $th->getMessage()
+            ];
+        }
+    }
+
 }

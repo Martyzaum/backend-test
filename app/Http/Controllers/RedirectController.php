@@ -4,15 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Redirects\StoreReq as RedirectsStoreReq;
 use App\Http\Requests\Redirects\UpdateReq as RedirectsUpdateReq;
+use App\Repositories\RedirectLogsRepository;
 use App\Repositories\RedirectRepository;
-use Vinkla\Hashids\Facades\Hashids;
+use App\Services\QueryParamsService;
+use App\Services\RedirectLogService;
 use Illuminate\Http\Request;
+use Vinkla\Hashids\Facades\Hashids;
 use Illuminate\Support\Facades\Log;
 
 class RedirectController extends Controller
 {
-    public function __construct(private RedirectRepository $redirectRepository)
-    {
+    public function __construct(
+        private RedirectRepository $redirectRepository,
+        private RedirectLogsRepository $redirectLogsRepository,
+        private RedirectLogService $redirectLogsService,
+        private QueryParamsService $queryParamsService
+    ) {
     }
 
     /**
@@ -20,15 +27,39 @@ class RedirectController extends Controller
      * @param string $code
      * @return \Illuminate\Http\Response | string
      */
-    public function index(string $code)
+    public function index(string $code, Request $request)
     {
+
         try {
-            $redirect = $this->redirectRepository->getRedirect($code);
+            $redirect = $this->redirectRepository->get($code);
             if (isset($redirect['status']) && $redirect['status'] === 'error') {
                 return response()->json($redirect, 404);
             } else {
                 Log::info('[RedirectController - index] Redirect found successfully!', ['data' => $redirect]);
-                return redirect($redirect->destiny_url);
+
+                $queryParams = $request->query();
+
+                $attLastAcess = $this->redirectRepository->update($code, ['last_access' => now('America/Sao_Paulo')->format('Y-m-d H:i:s')]);
+                if ($attLastAcess['status'] === 'error') {
+                    return response()->json($attLastAcess, 500);
+                }
+
+                $logData = $this->redirectLogsService->getLogData($redirect, $request, $queryParams);
+                if ($logData['status'] === 'error') {
+                    return response()->json($logData, 500);
+                }
+
+                $saveLog = $this->redirectLogsRepository->saveLog($logData['data']);
+                if ($saveLog['status'] === 'error') {
+                    return response()->json($saveLog, 500);
+                }
+
+                $finalUrl = $this->queryParamsService->checkQueryParams($queryParams, $redirect->destiny_url);
+                if ($finalUrl['status'] === 'error') {
+                    return response()->json($finalUrl, 500);
+                }
+
+                return redirect($finalUrl['data']);
             }
         } catch (\Throwable $th) {
             Log::error('[RedirectController - index] An error occurred while trying to get the redirect', ['error' => $th->getMessage()]);
@@ -41,6 +72,36 @@ class RedirectController extends Controller
         }
     }
 
+    /**
+     * Display the specified resource.
+     * @param string $code
+     * @return \Illuminate\Http\Response
+     */
+    public function show($code = null)
+    {
+        try {
+            if ($code) {
+                $redirects = $this->redirectRepository->get($code);
+            } else {
+                $redirects = $this->redirectRepository->getAll();
+            }
+
+            if (isset($redirects['status']) && $redirects['status'] === 'error') {
+                return response()->json($redirects, 404);
+            } else {
+                Log::info('[RedirectController - show] Redirects found successfully!', ['data' => $redirects]);
+                return response()->json($redirects, 200);
+            }
+        } catch (\Throwable $th) {
+            Log::error('[RedirectController - show] An error occurred while trying to get the redirects', ['error' => $th->getMessage()]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An error occurred while trying to get the redirects',
+                'error' => $th->getMessage()
+            ], 500);
+        }
+    }
 
     /**
      * Store a newly created resource in storage.
@@ -51,7 +112,7 @@ class RedirectController extends Controller
     public function store(RedirectsStoreReq $request)
     {
         try {
-            $save = $this->redirectRepository->saveRedirect($request->destiny_url);
+            $save = $this->redirectRepository->save($request->destiny_url);
             if (isset($save['status']) && $save['status'] === 'error') {
                 return response()->json($save, 500);
             } else {
@@ -86,7 +147,7 @@ class RedirectController extends Controller
     public function update(RedirectsUpdateReq $request, $code)
     {
         try {
-            $codeExists = $this->redirectRepository->getRedirect($code);
+            $codeExists = $this->redirectRepository->get($code);
             if (isset($codeExists['status']) && $codeExists['status'] === 'error') {
                 return response()->json($codeExists, 404);
             }
@@ -103,7 +164,7 @@ class RedirectController extends Controller
                 ], 400);
             }
 
-            $update = $this->redirectRepository->updateRedirect($code, $updateData);
+            $update = $this->redirectRepository->update($code, $updateData);
             if (isset($update['status']) && $update['status'] === 'error') {
                 return response()->json($update, 500);
             } else {
@@ -137,12 +198,17 @@ class RedirectController extends Controller
     public function destroy($code)
     {
         try {
-            $codeExists = $this->redirectRepository->getRedirect($code);
+            $codeExists = $this->redirectRepository->get($code);
             if (isset($codeExists['status']) && $codeExists['status'] === 'error') {
                 return response()->json($codeExists, 404);
             }
 
-            $delete = $this->redirectRepository->deleteRedirect($code);
+            $desactivate = $this->redirectRepository->update($code, ['status' => 'inactive']);
+            if (isset($desactivate['status']) && $desactivate['status'] === 'error') {
+                return response()->json($desactivate, 500);
+            }
+
+            $delete = $this->redirectRepository->delete($code);
             if (isset($delete['status']) && $delete['status'] === 'error') {
                 return response()->json($delete, 500);
             } else {

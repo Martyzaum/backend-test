@@ -10,6 +10,17 @@ class Redirect extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['destiny_url', 'code'];
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = ['destiny_url', 'code', 'status', 'last_access'];
+
+    /**
+     * The attributes that should be hidden for arrays.
+     *
+     * @var array
+     */
     protected $hidden = ['id'];
 }
