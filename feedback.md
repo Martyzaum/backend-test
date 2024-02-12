@@ -55,5 +55,6 @@ Esse documento visa coletar feedbacks sobre o teste de desenvolvimento. Desde o 
 > Como padrão de projeto geralmente crio uma camada de dominio, mas esse era simples então não foi necessario, tipei todas as funções, todas escritas em inglês, sempre tento deixar o código limpo e reutilizavel
 > Ultilizei o padrão de branchs main e develop, com base na develop criei branchs de feature e fui adicionado aos poucos
 > Fiz os commitos todos em inglês por padrão, como fiz em pouco tempo fiz poucos commits e talvez eles não estejam tao detalhados
+> Adicionei Scrips bash para facilitar as seeders e testes
 
 > Obrigado pela oportunidade, espero que gostem do meu teste e aguardo feedback =D
