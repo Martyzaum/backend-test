@@ -9,6 +9,7 @@ use App\Repositories\RedirectRepository;
 use App\Services\QueryParamsService;
 use App\Services\RedirectLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Vinkla\Hashids\Facades\Hashids;
 use Illuminate\Support\Facades\Log;
 
@@ -112,6 +113,25 @@ class RedirectController extends Controller
     public function store(RedirectsStoreReq $request)
     {
         try {
+
+            $checkUrl = Http::get($request->destiny_url);
+            if ($checkUrl->status() !== 200 && $checkUrl->status() !== 201) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'The destiny_url must return status 200 or 201',
+                    'error' => $checkUrl->status()
+                ], 400);
+            }
+
+            $queryParams = parse_url($request->destiny_url, PHP_URL_QUERY);
+            if ($queryParams) {
+                parse_str($queryParams, $queryParamsArray);
+                $checkQueryParams = $this->queryParamsService->validateQueryParams($queryParamsArray);
+                if ($checkQueryParams['status'] === 'error') {
+                    return response()->json($checkQueryParams, 400);
+                }
+            }
+
             $save = $this->redirectRepository->save($request->destiny_url);
             if (isset($save['status']) && $save['status'] === 'error') {
                 return response()->json($save, 500);
@@ -152,9 +172,29 @@ class RedirectController extends Controller
                 return response()->json($codeExists, 404);
             }
 
+            if (isset($request->destiny_url) && !empty($request->destiny_url)) {
+                $checkUrl = Http::get($request->destiny_url);
+                if ($checkUrl->status() !== 200 && $checkUrl->status() !== 201) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'The destiny_url must return status 200 or 201',
+                        'error' => $checkUrl->status()
+                    ], 400);
+                }
+
+                $queryParams = parse_url($request->destiny_url, PHP_URL_QUERY);
+                if ($queryParams) {
+                    parse_str($queryParams, $queryParamsArray);
+                    $checkQueryParams = $this->queryParamsService->validateQueryParams($queryParamsArray);
+                    if ($checkQueryParams['status'] === 'error') {
+                        return response()->json($checkQueryParams, 400);
+                    }
+                }
+            }
+
             $updateData = [
                 'destiny_url' => $request->destiny_url ?? '',
-                'status' => $request->status ?? ''
+                'status' => $request->status ? $request->status : $codeExists->status,
             ];
 
             if (empty($updateData['destiny_url']) && empty($updateData['status'])) {
@@ -205,12 +245,12 @@ class RedirectController extends Controller
 
             $desactivate = $this->redirectRepository->update($code, ['status' => 'inactive']);
             if (isset($desactivate['status']) && $desactivate['status'] === 'error') {
-                return response()->json($desactivate, 500);
+                return response()->json($desactivate, 400);
             }
 
             $delete = $this->redirectRepository->delete($code);
             if (isset($delete['status']) && $delete['status'] === 'error') {
-                return response()->json($delete, 500);
+                return response()->json($delete, 400);
             } else {
                 Log::info('[RedirectController - destroy] Redirect deleted successfully!', ['data' => $delete]);
                 return response()->json([
@@ -220,7 +260,7 @@ class RedirectController extends Controller
                         'code' => $code,
                         'status' => 'deleted'
                     ]
-                ], 200);
+                ], 204);
             }
         } catch (\Throwable $th) {
             Log::error('[RedirectController - destroy] An error occurred while trying to delete the redirect', ['error' => $th->getMessage()]);

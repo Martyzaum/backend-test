@@ -29,7 +29,6 @@ class RedirectLogsRepository
                 'data' => $log
             ];
         } catch (\Throwable $th) {
-            dump($th, $logData);
             Log::error('[RedirectLogsRepository - saveLog] An error occurred while trying to save the log', ['error' => $th->getMessage()]);
             return [
                 'status' => 'error',
@@ -44,7 +43,7 @@ class RedirectLogsRepository
      * @param string $code
      * @return array
      */
-    public function getLogStatsByCode(string $code): array
+    public function getLogStatsByCode(string $code)
     {
         try {
             $id = Hashids::decode($code);
@@ -80,14 +79,20 @@ class RedirectLogsRepository
                 'accesses_last_10_days' => $accessesLast10Days,
             ]);
 
+
             return [
-                'total_accesses' => $totalAccesses,
-                'unique_accesses' => $uniqueAccesses,
-                'top_referrers' => $topReferrers,
-                'accesses_last_10_days' => $accessesLast10Days,
+                'status' => 'success',
+                'message' => 'Stats retrieved successfully!',
+                'data' => [
+                    'total_accesses' => $totalAccesses,
+                    'unique_accesses' => $uniqueAccesses,
+                    'top_referrers' => $topReferrers,
+                    'accesses_last_10_days' => $accessesLast10Days,
+                ]
             ];
         } catch (\Throwable $th) {
             Log::error('[RedirectLogsRepository - getLogStatsByCode] An error occurred while trying to retrieve the stats', ['error' => $th->getMessage()]);
+
             return [
                 'status' => 'error',
                 'message' => 'An error occurred while trying to retrieve the stats',
@@ -127,6 +132,4 @@ class RedirectLogsRepository
             ];
         }
     }
-
-
 }

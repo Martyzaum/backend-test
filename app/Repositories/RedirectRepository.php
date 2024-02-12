@@ -56,12 +56,14 @@ class RedirectRepository
     {
         try {
             $id = Hashids::decode($code);
-            if (empty($id)) {
-                Log::error('[RedirectRepository - getRedirect] Redirect not found!', ['code' => $code]);
+
+            if(empty($id))
+            {
+                Log::error('[RedirectRepository - getRedirect] Invalid code!', ['code' => $code]);
 
                 return [
                     'status' => 'error',
-                    'message' => 'Redirect not found!'
+                    'message' => 'Invalid code!'
                 ];
             }
 
@@ -194,5 +196,4 @@ class RedirectRepository
             ];
         }
     }
-
 }

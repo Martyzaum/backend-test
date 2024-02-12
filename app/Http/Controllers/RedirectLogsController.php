@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Repositories\RedirectLogsRepository;
+use App\Repositories\RedirectRepository;
 use Illuminate\Http\Request;
+use Vinkla\Hashids\Facades\Hashids;
 
 class RedirectLogsController extends Controller
 {
     public function __construct(
-        private RedirectLogsRepository $redirectLogsRepository
+        private RedirectLogsRepository $redirectLogsRepository,
+        private RedirectRepository $redirectRepository
     ) {
     }
 
@@ -20,13 +23,17 @@ class RedirectLogsController extends Controller
     public function stats(string $code)
     {
         try {
-            $stats = $this->redirectLogsRepository->getLogStatsByCode($code);
+            $existCode = $this->redirectRepository->get($code);
+            if (isset($existCode['status']) && $existCode['status'] === 'error') {
+                return response()->json($existCode, 400);
+            }
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Stats retrieved successfully!',
-                'data' => $stats
-            ]);
+            $stats = $this->redirectLogsRepository->getLogStatsByCode($code);
+            if ($stats['status'] === 'error') {
+                return response()->json($stats, 400);
+            }
+
+            return response()->json($stats, 200);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'error',

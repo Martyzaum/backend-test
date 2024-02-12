@@ -27,7 +27,6 @@ class RedirectLogService
 
             $logData = [
                 'redirect_id' => $code[0],
-                'code' => $redirect->code,
                 'ip' => $request->ip(),
                 'user_agent' => $request->header('User-Agent'),
                 'referer' => $request->header('Referer'),

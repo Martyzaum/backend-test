@@ -24,14 +24,12 @@ class QueryParamsService
             $query = $parsedUrl['query'] ?? '';
             parse_str($query, $destinyUrlParams);
 
-            $finalParams = [];
+            $finalParams = $destinyUrlParams;
 
             foreach ($queryParams as $key => $value) {
-                if (isset($destinyUrlParams[$key]) && !empty($value)) {
+                if (!empty($value)) {
                     $finalParams[$key] = $value;
-                } elseif (isset($destinyUrlParams[$key]) && !empty($destinyUrlParams[$key]) && empty($value)) {
-                    $finalParams[$key] = $destinyUrlParams[$key];
-                } elseif (!empty($value)) {
+                } elseif (!isset($finalParams[$key])) {
                     $finalParams[$key] = $value;
                 }
             }
@@ -60,6 +58,37 @@ class QueryParamsService
             return [
                 'status' => 'error',
                 'message' => 'An error occurred while trying to check the query params',
+                'error' => $th->getMessage()
+            ];
+        }
+    }
+
+    public function validateQueryParams($queryParams): array
+    {
+        try {
+
+            foreach ($queryParams as $key => $value) {
+                if (empty($value)) {
+                    Log::error('[QueryParamsService - validateQueryParams] Invalid query params because it has empty value!', ['error' => 'Invalid query params because it has empty value!']);
+                    return [
+                        'status' => 'error',
+                        'message' => 'Invalid query params because it has empty value!',
+                    ];
+                }
+            }
+
+            Log::info('[QueryParamsService - validateQueryParams] Query params validated successfully!', ['data' => $queryParams]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Query params validated successfully!',
+                'data' => $queryParams
+            ];
+        } catch (\Throwable $th) {
+            Log::error('[QueryParamsService - validateQueryParams] An error occurred while trying to validate the query params', ['error' => $th->getMessage()]);
+            return [
+                'status' => 'error',
+                'message' => 'An error occurred while trying to validate the query params',
                 'error' => $th->getMessage()
             ];
         }
